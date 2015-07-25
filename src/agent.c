@@ -40,6 +40,7 @@ static void ice_failed_handler(int err, uint16_t scode,
 			       struct ice_candpair *pair, void *arg)
 {
 	struct agent *ag = arg;
+	(void)pair;
 	(void)ag;
 
 	re_printf("candidate-pair failed (%m %u)\n", err, scode);
