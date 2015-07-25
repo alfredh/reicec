@@ -157,7 +157,7 @@ static void stun_mapped_handler(int err, const struct sa *map, void *arg)
 			 base->attr.tcptype, sa_af(&base->attr.addr),
 			 base->attr.proto);
 
-	err = trice_add_local_candidate(&lcand, base->icem, base->attr.compid,
+	err = trice_lcand_add(&lcand, base->icem, base->attr.compid,
 				       base->attr.proto, prio, map,
 				       &base->attr.addr, ICE_CAND_TYPE_SRFLX,
 				       base->attr.tcptype, NULL, 0);
@@ -548,7 +548,7 @@ static void turnc_handler(int err, uint16_t scode, const char *reason,
 			 base->attr.tcptype, sa_af(&base->attr.addr),
 			 cand->turn_proto);
 
-	err = trice_add_local_candidate(&lcand_relay, base->icem,
+	err = trice_lcand_add(&lcand_relay, base->icem,
 				       base->attr.compid,
 				       base->attr.proto, prio, relay_addr,
 				       mapped_addr, ICE_CAND_TYPE_RELAY,
@@ -585,7 +585,7 @@ static void turnc_handler(int err, uint16_t scode, const char *reason,
 				 base->attr.tcptype, sa_af(&base->attr.addr),
 				 base->attr.proto);
 
-		err = trice_add_local_candidate(&lcand_srflx, base->icem,
+		err = trice_lcand_add(&lcand_srflx, base->icem,
 					       base->attr.compid,
 					       base->attr.proto, prio,
 					       mapped_addr, &base->attr.addr,
@@ -790,9 +790,9 @@ static int add_candidate(struct agent *ag, const struct sa *addr,
 	prio = calc_prio(ICE_CAND_TYPE_HOST, proto, tcptype, sa_af(addr),
 			 proto);
 
-	err = trice_add_local_candidate(&lcand, ag->icem, COMPID, proto,
-				       prio, addr, NULL, ICE_CAND_TYPE_HOST,
-				       tcptype, NULL, LAYER_ICE);
+	err = trice_lcand_add(&lcand, ag->icem, COMPID, proto,
+			      prio, addr, NULL, ICE_CAND_TYPE_HOST,
+			      tcptype, NULL, LAYER_ICE);
 	if (err) {
 		re_fprintf(stderr, "failed to add local candidate (%m)\n",
 			   err);
@@ -986,10 +986,10 @@ static int agent_rcand_decode_add(struct trice *icem, const char *val)
 		return err;
 
 	/* add only if not exist */
-	return trice_add_remote_candidate(NULL, icem, rcand.compid,
-					  rcand.foundation, rcand.proto,
-					  rcand.prio, &rcand.addr,
-					  rcand.type, rcand.tcptype);
+	return trice_rcand_add(NULL, icem, rcand.compid,
+			       rcand.foundation, rcand.proto,
+			       rcand.prio, &rcand.addr,
+			       rcand.type, rcand.tcptype);
 }
 
 
