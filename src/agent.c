@@ -33,6 +33,14 @@ static void ice_estab_handler(struct ice_candpair *pair, void *arg)
 	(void)ag;
 
 	re_printf("established: %H\n", trice_candpair_debug, pair);
+
+	if (trice_checklist_iscompleted(ag->icem)) {
+
+		re_printf("checklist completed! -- stop.\n");
+
+		if (ag->cli->client && !ag->cli->param.wait)
+			re_cancel();
+	}
 }
 
 
@@ -45,15 +53,13 @@ static void ice_failed_handler(int err, uint16_t scode,
 
 	re_printf("candidate-pair failed (%m %u)\n", err, scode);
 
-#if 0
-	/* XXX cancel if checklist is completed */
+	if (trice_checklist_iscompleted(ag->icem)) {
 
-	if (ag->icem)
-		re_printf("%H\n", icem_debug, ag->icem);
+		re_printf("checklist completed! -- stop.\n");
 
-	if (ag->cli->client && !ag->cli->param.wait)
-		re_cancel();
-#endif
+		if (ag->cli->client && !ag->cli->param.wait)
+			re_cancel();
+	}
 }
 
 
@@ -970,7 +976,7 @@ void agent_gather(struct agent *ag)
 }
 
 
-static int rcand_decode_add(struct trice *icem, const char *val)
+static int agent_rcand_decode_add(struct trice *icem, const char *val)
 {
 	struct ice_cand_attr rcand;
 	int err;
@@ -1006,7 +1012,7 @@ int agent_process_remote_attr(struct agent *ag,
 	else if (0 == str_casecmp(name, "candidate")) {
 		unsigned i;
 
-		err = rcand_decode_add(ag->icem, value);
+		err = agent_rcand_decode_add(ag->icem, value);
 
 		for (i=0; i<ag->candc; i++)
 			candidate_add_permissions(&ag->candv[i]);
@@ -1019,10 +1025,18 @@ int agent_process_remote_attr(struct agent *ag,
 		re_printf("attribute ignored: %s\n", name);
 	}
 
-	if (err)
+	if (err) {
+		re_printf("remote attr error (%m)\n", err);
 		return err;
+	}
 
-	if (ag->rufrag && ag->rpwd && ag->cli->param.run_checklist) {
+	if (ag->rufrag && ag->rpwd && ag->cli->param.run_checklist
+	    && !list_isempty(trice_rcandl(ag->icem))
+	    && ICE_CHECKLIST_RUNNING != trice_checklist_state(ag->icem)) {
+
+		re_printf("starting ICE checklist with pacing interval"
+			  " %u milliseconds..\n",
+			  ag->cli->param.pacing_interval);
 
 		err = trice_checklist_start(ag->icem, NULL,
 					    ag->cli->param.pacing_interval,
