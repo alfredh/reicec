@@ -27,7 +27,8 @@ static void turnc_handler(int err, uint16_t scode, const char *reason,
 			  void *arg);
 
 
-static void ice_estab_handler(struct ice_candpair *pair, void *arg)
+static void ice_estab_handler(struct ice_candpair *pair,
+			      const struct stun_msg *msg, void *arg)
 {
 	struct agent *ag = arg;
 	(void)ag;
