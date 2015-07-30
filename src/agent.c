@@ -32,6 +32,7 @@ static void ice_estab_handler(struct ice_candpair *pair,
 {
 	struct agent *ag = arg;
 	(void)ag;
+	(void)msg;
 
 	re_printf("established: %H\n", trice_candpair_debug, pair);
 
@@ -159,9 +160,10 @@ static void stun_mapped_handler(int err, const struct sa *map, void *arg)
 			 base->attr.proto);
 
 	err = trice_lcand_add(&lcand, base->icem, base->attr.compid,
-				       base->attr.proto, prio, map,
-				       &base->attr.addr, ICE_CAND_TYPE_SRFLX,
-				       base->attr.tcptype, NULL, 0);
+			      base->attr.proto, prio, map,
+			      &base->attr.addr, ICE_CAND_TYPE_SRFLX,
+			      &base->attr.addr,
+			      base->attr.tcptype, NULL, 0);
 	if (err) {
 		re_fprintf(stderr, "failed to add SRFLX candidate (%m)\n",
 			   err);
@@ -550,11 +552,12 @@ static void turnc_handler(int err, uint16_t scode, const char *reason,
 			 cand->turn_proto);
 
 	err = trice_lcand_add(&lcand_relay, base->icem,
-				       base->attr.compid,
-				       base->attr.proto, prio, relay_addr,
-				       mapped_addr, ICE_CAND_TYPE_RELAY,
-				       base->attr.tcptype, base->us,
-				       LAYER_ICE);
+			      base->attr.compid,
+			      base->attr.proto, prio, relay_addr,
+			      relay_addr, ICE_CAND_TYPE_RELAY,
+			      mapped_addr,
+			      base->attr.tcptype, base->us,
+			      LAYER_ICE);
 	if (err) {
 		re_fprintf(stderr, "failed to add RELAY candidate (%m)\n",
 			   err);
@@ -587,12 +590,13 @@ static void turnc_handler(int err, uint16_t scode, const char *reason,
 				 base->attr.proto);
 
 		err = trice_lcand_add(&lcand_srflx, base->icem,
-					       base->attr.compid,
-					       base->attr.proto, prio,
-					       mapped_addr, &base->attr.addr,
-					       ICE_CAND_TYPE_SRFLX,
-					       base->attr.tcptype,
-					       NULL, LAYER_ICE);
+				      base->attr.compid,
+				      base->attr.proto, prio,
+				      mapped_addr, &base->attr.addr,
+				      ICE_CAND_TYPE_SRFLX,
+				      &base->attr.addr,
+				      base->attr.tcptype,
+				      NULL, LAYER_ICE);
 		if (err) {
 			re_fprintf(stderr, "failed to add SRFLX"
 				   " candidate (%m)\n",
@@ -792,7 +796,7 @@ static int add_candidate(struct agent *ag, const struct sa *addr,
 			 proto);
 
 	err = trice_lcand_add(&lcand, ag->icem, COMPID, proto,
-			      prio, addr, NULL, ICE_CAND_TYPE_HOST,
+			      prio, addr, NULL, ICE_CAND_TYPE_HOST, NULL,
 			      tcptype, NULL, LAYER_ICE);
 	if (err) {
 		re_fprintf(stderr, "failed to add local candidate (%m)\n",
@@ -1033,7 +1037,7 @@ int agent_process_remote_attr(struct agent *ag,
 
 	if (ag->rufrag && ag->rpwd && ag->cli->param.run_checklist
 	    && !list_isempty(trice_rcandl(ag->icem))
-	    && ICE_CHECKLIST_RUNNING != trice_checklist_state(ag->icem)) {
+	    && !trice_checklist_isrunning(ag->icem)) {
 
 		re_printf("starting ICE checklist with pacing interval"
 			  " %u milliseconds..\n",
