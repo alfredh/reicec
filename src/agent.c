@@ -786,7 +786,8 @@ static int gather_relay(struct agent *ag, struct ice_lcand *base,
 
 
 static int add_candidate(struct agent *ag, const struct sa *addr,
-			 int proto, enum ice_tcptype tcptype)
+			 int proto, enum ice_tcptype tcptype,
+			 const char *ifname)
 {
 	struct ice_lcand *lcand;
 	uint32_t prio;
@@ -803,6 +804,8 @@ static int add_candidate(struct agent *ag, const struct sa *addr,
 			   err);
 		return err;
 	}
+
+	str_ncpy(lcand->ifname, ifname, sizeof(lcand->ifname));
 
 	err = control_send_message(ag->cli, "a=candidate:%H\r\n",
 				   ice_cand_attr_encode, &lcand->attr);
@@ -888,11 +891,13 @@ static bool interface_handler(const char *ifname, const struct sa *addr,
 	re_printf("interface: %s %j\n", ifname, addr);
 
 	if (ag->cli->param.use_udp)
-		err |= add_candidate(ag, addr, IPPROTO_UDP, 0);
+		err |= add_candidate(ag, addr, IPPROTO_UDP, 0, ifname);
 	if (ag->cli->param.use_tcp) {
-		err |= add_candidate(ag, addr, IPPROTO_TCP, ICE_TCP_SO);
+		err |= add_candidate(ag, addr, IPPROTO_TCP, ICE_TCP_SO,
+				     ifname);
 		err |= add_candidate(ag, addr, IPPROTO_TCP,
-			     ag->client ? ICE_TCP_ACTIVE : ICE_TCP_PASSIVE);
+			     ag->client ? ICE_TCP_ACTIVE : ICE_TCP_PASSIVE,
+			     ifname);
 	}
 
 	return err != 0;
