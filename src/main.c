@@ -30,7 +30,7 @@
 #define MSG_MAX_LENGTH 4096
 
 
-static struct trice_conf conf = {0, 0, 1};
+static struct trice_conf conf = {0, 0, 1, 1};
 
 
 static void destructor(void *arg)
