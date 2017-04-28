@@ -930,6 +930,7 @@ int agent_alloc(struct agent **agp, struct reicec *cli,
 		const struct trice_conf *conf)
 {
 	struct agent *ag;
+	enum ice_role role;
 	int err = 0;
 
 	ag = mem_zalloc(sizeof(*ag), destructor);
@@ -941,7 +942,9 @@ int agent_alloc(struct agent **agp, struct reicec *cli,
 	rand_str(ag->lufrag, sizeof(ag->lufrag));
 	rand_str(ag->lpwd, sizeof(ag->lpwd));
 
-	err = trice_alloc(&ag->icem, conf, cli->client, ag->lufrag, ag->lpwd);
+	role = cli->client ? ICE_ROLE_CONTROLLING : ICE_ROLE_CONTROLLED;
+
+	err = trice_alloc(&ag->icem, conf, role, ag->lufrag, ag->lpwd);
 	if (err)
 		goto out;
 
