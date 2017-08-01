@@ -32,6 +32,7 @@ struct candidate {
 
 struct agent {
 	struct reicec *cli;  /* pointer to parent */
+	struct trice_conf conf;
 	struct trice *icem;
 	struct stun *stun;
 	char lufrag[8];
@@ -48,6 +49,8 @@ struct agent {
 
 	bool local_eoc;
 	bool remote_eoc;
+
+	struct ice_candpair *selected_pair;
 };
 
 

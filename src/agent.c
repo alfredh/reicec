@@ -27,21 +27,75 @@ static void turnc_handler(int err, uint16_t scode, const char *reason,
 			  void *arg);
 
 
+static void set_selected_pair(struct agent *ag, struct ice_candpair *pair)
+{
+	if (ag->selected_pair) {
+		re_fprintf(stderr, "selected pair already set\n");
+		return;
+	}
+
+	ag->selected_pair = mem_ref(pair);
+
+	re_printf("Selected pair:  %H\n", trice_candpair_debug, pair);
+}
+
+
 static void ice_estab_handler(struct ice_candpair *pair,
 			      const struct stun_msg *msg, void *arg)
 {
 	struct agent *ag = arg;
-	(void)ag;
 	(void)msg;
 
 	re_printf("established: %H\n", trice_candpair_debug, pair);
 
-	if (trice_checklist_iscompleted(ag->icem)) {
+	switch (ag->conf.nom) {
 
-		re_printf("checklist completed! -- stop.\n");
+	case ICE_NOMINATION_REGULAR:
 
-		if (ag->cli->client && !ag->cli->param.wait)
-			re_cancel();
+		if (trice_checklist_iscompleted(ag->icem)) {
+
+			struct list *validl = trice_validl(ag->icem);
+
+			re_printf("regular: checklist completed! -- stop.\n");
+
+			pair = trice_candpair_find_state(validl,
+						 ICE_CANDPAIR_SUCCEEDED);
+			if (!pair) {
+				re_fprintf(stderr, "no pair in succeeded\n");
+				return;
+			}
+
+			if (!ag->selected_pair)
+				set_selected_pair(ag, pair);
+
+			if (trice_local_role(ag->icem) ==
+			    ICE_ROLE_CONTROLLING) {
+
+				trice_conncheck_send(ag->icem, pair, true);
+			}
+
+			if (ag->cli->client && !ag->cli->param.wait)
+				re_cancel();
+		}
+		break;
+
+	case ICE_NOMINATION_AGGRESSIVE:
+
+		if (pair->valid && pair->nominated) {
+
+			if (!ag->selected_pair)
+				set_selected_pair(ag, pair);
+		}
+
+		if (trice_checklist_iscompleted(ag->icem)) {
+
+			re_printf("aggressive: checklist completed!"
+				  " -- stop.\n");
+
+			if (ag->cli->client && !ag->cli->param.wait)
+				re_cancel();
+		}
+		break;
 	}
 }
 
@@ -921,6 +975,7 @@ static void destructor(void *arg)
 		mem_deref(ag->candv[i].turnc);     /* deref before ICEM */
 	}
 
+	mem_deref(ag->selected_pair);
 	mem_deref(ag->icem);
 	mem_deref(ag->stun);
 }
@@ -938,6 +993,7 @@ int agent_alloc(struct agent **agp, struct reicec *cli,
 		return ENOMEM;
 
 	ag->cli = cli;
+	ag->conf = *conf;
 	ag->client = cli->client;
 	rand_str(ag->lufrag, sizeof(ag->lufrag));
 	rand_str(ag->lpwd, sizeof(ag->lpwd));
@@ -1053,7 +1109,6 @@ int agent_process_remote_attr(struct agent *ag,
 
 		err = trice_checklist_start(ag->icem, NULL,
 					    ag->cli->param.pacing_interval,
-					    true,
 					    ice_estab_handler,
 					    ice_failed_handler, ag);
 		if (err) {
